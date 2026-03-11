@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-900;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-2xl border border-slate-100 shadow-sm;
+  }
+
+  .btn-primary {
+    @apply bg-brand-600 text-white px-4 py-2 rounded-lg font-medium text-sm
+           hover:bg-brand-700 active:bg-brand-800 transition-colors duration-150
+           focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2;
+  }
+
+  .btn-secondary {
+    @apply bg-white text-slate-700 px-4 py-2 rounded-lg font-medium text-sm border border-slate-200
+           hover:bg-slate-50 active:bg-slate-100 transition-colors duration-150
+           focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2;
+  }
+
+  .btn-ghost {
+    @apply text-slate-600 px-3 py-2 rounded-lg font-medium text-sm
+           hover:bg-slate-100 active:bg-slate-200 transition-colors duration-150;
+  }
+
+  .input {
+    @apply w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white
+           focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent
+           placeholder:text-slate-400 transition-all duration-150;
+  }
+
+  .label {
+    @apply block text-xs font-medium text-slate-500 mb-1;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Progress bar animation */
+@keyframes progress-fill {
+  from { width: 0%; }
+}
+
+.progress-animated {
+  animation: progress-fill 0.8s ease-out;
+}
