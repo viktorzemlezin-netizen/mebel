@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Ruler, Camera, AlertTriangle, ChevronLeft, CheckCircle, ArrowRight, SkipForward, X } from 'lucide-react';
+import { Ruler, Camera, AlertTriangle, ChevronLeft, ChevronRight, CheckCircle, ArrowRight, SkipForward, X } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
 import { formatDateShort } from '../utils/constants.js';
 
@@ -16,6 +16,7 @@ const STEPS = [
     multi: false,
     instruction: 'Встаньте в дверном проёме. Сфотографируйте всю комнату целиком. Должны быть видны все стены, пол и потолок.',
     hint: 'Держите телефон горизонтально. Отступите максимально назад.',
+    quickTip: 'Встаньте в дверном проёме. Горизонтально. Все 3 стены в кадре.',
   },
   {
     id: 'wall',
@@ -25,6 +26,7 @@ const STEPS = [
     multi: false,
     instruction: 'Подойдите к стене где будет стоять {furnitureType}. Сфотографируйте стену фронтально — от угла до угла, от пола до потолка.',
     hint: 'Станьте прямо напротив стены. Вся стена должна влезть в кадр.',
+    quickTip: 'Прямо напротив стены. Параллельно. Вся стена от угла до угла. НЕ под углом!',
   },
   {
     id: 'corners',
@@ -34,6 +36,7 @@ const STEPS = [
     multi: true,
     instruction: 'Сфотографируйте оба угла где сходятся стены. Левый угол — отдельное фото, правый угол — отдельное фото.',
     hint: 'Угол должен быть виден от пола до потолка. Нужно видеть стык двух стен.',
+    quickTip: 'Левый угол отдельно. Правый угол отдельно. От пола до потолка.',
   },
   {
     id: 'windows',
@@ -44,6 +47,7 @@ const STEPS = [
     instruction: 'Сфотографируйте каждое окно, дверной проём, арку. Каждый объект — отдельное фото.',
     hint: 'Фотографируйте фронтально. Должен быть виден подоконник, откосы, расстояние до стен.',
     skipLabel: 'Нет окон в этой зоне',
+    quickTip: 'Прямо напротив окна. Подоконник и откосы видны.',
   },
   {
     id: 'obstacles',
@@ -54,6 +58,7 @@ const STEPS = [
     instruction: 'Сфотографируйте батареи, трубы, вентиляцию, электрощиток, розетки — всё что может помешать установке мебели.',
     hint: 'Если ничего нет — пропустите этот шаг.',
     skipLabel: 'Нет препятствий',
+    quickTip: 'Батареи, трубы, розетки. Всё что мешает установке.',
   },
 ];
 
@@ -63,6 +68,62 @@ const COLOR_MAP = {
   white: '#FFFFFF', blue: '#3B82F6', red: '#EF4444',
   yellow: '#FBBF24', green: '#10B981', orange: '#F97316',
 };
+
+// ─── Lightbox ──────────────────────────────────────────────────────────────────
+
+function Lightbox({ photos, initialIndex, onClose }) {
+  const [index, setIndex] = useState(initialIndex);
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft') setIndex(i => (i - 1 + photos.length) % photos.length);
+      if (e.key === 'ArrowRight') setIndex(i => (i + 1) % photos.length);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [photos.length, onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center"
+      onClick={onClose}
+    >
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center text-white transition-colors z-10"
+      >
+        <X className="w-5 h-5" />
+      </button>
+      {photos.length > 1 && (
+        <>
+          <button
+            onClick={(e) => { e.stopPropagation(); setIndex(i => (i - 1 + photos.length) % photos.length); }}
+            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center text-white transition-colors z-10"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); setIndex(i => (i + 1) % photos.length); }}
+            className="absolute right-14 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center text-white transition-colors z-10"
+          >
+            <ChevronRight className="w-6 h-6" />
+          </button>
+        </>
+      )}
+      <img
+        src={photos[index]}
+        alt=""
+        className="max-w-[95vw] max-h-[95vh] object-contain rounded-xl shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      />
+      {photos.length > 1 && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/60 text-sm">
+          {index + 1} / {photos.length}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function drawArrowHead(ctx, x, y, angle, size) {
   ctx.beginPath();
@@ -145,7 +206,7 @@ function renderAnnotations(canvas, annotations) {
   }
 }
 
-function AnnotatedPhoto({ imageDataUrl, annotations }) {
+function AnnotatedPhoto({ imageDataUrl, annotations, onClick }) {
   const canvasRef = useRef(null);
   const imgRef = useRef(null);
   useEffect(() => {
@@ -160,7 +221,10 @@ function AnnotatedPhoto({ imageDataUrl, annotations }) {
     if (img.complete && img.naturalWidth > 0) draw(); else img.onload = draw;
   }, [imageDataUrl, annotations]);
   return (
-    <div className="relative rounded-2xl overflow-hidden bg-slate-900 shadow-lg">
+    <div
+      className={`relative rounded-2xl overflow-hidden bg-slate-900 shadow-lg ${onClick ? 'cursor-zoom-in' : ''}`}
+      onClick={onClick}
+    >
       <img ref={imgRef} src={imageDataUrl} className="hidden" alt="" crossOrigin="anonymous" />
       <canvas ref={canvasRef} className="w-full rounded-2xl block" />
     </div>
@@ -242,6 +306,13 @@ function PhotoCollectionStep({ stepIndex, step, furnitureType, photos, onAddPhot
           </div>
         </div>
 
+        {/* Quick tip card */}
+        {step.quickTip && (
+          <div className="mx-6 mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
+            <span className="text-lg flex-shrink-0 leading-tight">{step.icon}</span>
+            <p className="text-sm font-semibold text-amber-800 leading-snug">{step.quickTip}</p>
+          </div>
+        )}
         {/* Photo slots */}
         <div className="px-6 pb-5">
           {step.multi ? (
@@ -386,7 +457,7 @@ function MeasurementRow({ index, item, value, onChange, required }) {
             focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400
             ${filled ? 'border-emerald-300 bg-white' : 'border-slate-200 bg-white'}`}
         />
-        <span className="text-xs text-slate-400 w-6 text-left">{item.unit || 'см'}</span>
+        <span className="text-xs text-slate-400 w-6 text-left">{item.unit || 'мм'}</span>
       </div>
     </div>
   );
@@ -396,7 +467,14 @@ function MeasurementsPhase({ order, wallPhoto, allPhotos, aiResult, onComplete }
   const [values, setValues] = useState({});
   const [showWarnings, setShowWarnings] = useState(true);
   const [activePhoto, setActivePhoto] = useState(null);
+  const [lightbox, setLightbox] = useState(null);
   const { room_summary, annotations = [], measurements = [], warnings = [] } = aiResult;
+
+  const allPhotoSrcs = allPhotos.map(p => p.dataUrl);
+  const openLightbox = (src) => {
+    const idx = allPhotoSrcs.indexOf(src);
+    setLightbox({ photos: allPhotoSrcs, index: idx >= 0 ? idx : 0 });
+  };
 
   const required = measurements.filter(m => m.required);
   const filledRequired = required.filter(m => values[m.id]?.trim());
@@ -459,14 +537,20 @@ function MeasurementsPhase({ order, wallPhoto, allPhotos, aiResult, onComplete }
         {/* LEFT: annotated photo + strip */}
         <div className="space-y-2">
           <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Фото с аннотациями</h3>
-          {displayPhoto && <AnnotatedPhoto imageDataUrl={displayPhoto} annotations={displayPhoto === wallPhoto ? annotations : []} />}
+          {displayPhoto && (
+            <AnnotatedPhoto
+              imageDataUrl={displayPhoto}
+              annotations={displayPhoto === wallPhoto ? annotations : []}
+              onClick={() => openLightbox(displayPhoto)}
+            />
+          )}
           {/* Photo strip */}
           {allPhotos.length > 1 && (
             <div className="flex gap-2 overflow-x-auto pb-1">
               {allPhotos.map((p, i) => (
                 <button
                   key={i}
-                  onClick={() => setActivePhoto(p.dataUrl)}
+                  onClick={() => { setActivePhoto(p.dataUrl); setLightbox({ photos: allPhotoSrcs, index: i }); }}
                   className={`w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 border-2 transition-all
                     ${activePhoto === p.dataUrl || (activePhoto === null && p.dataUrl === wallPhoto)
                       ? 'border-amber-400' : 'border-transparent'}`}
@@ -475,6 +559,9 @@ function MeasurementsPhase({ order, wallPhoto, allPhotos, aiResult, onComplete }
                 </button>
               ))}
             </div>
+          )}
+          {lightbox && (
+            <Lightbox photos={lightbox.photos} initialIndex={lightbox.index} onClose={() => setLightbox(null)} />
           )}
           {/* Legend */}
           <div className="flex flex-wrap gap-2">
@@ -555,6 +642,7 @@ function CompletePhase({ order, allPhotos, completion, onBack, showToast }) {
   const { measurements = [], values = {}, room_summary, warnings = [] } = completion;
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [completeLightbox, setCompleteLightbox] = useState(null);
   const categories = {};
   for (const m of measurements) {
     const cat = m.category || 'Прочее';
@@ -612,9 +700,18 @@ function CompletePhase({ order, allPhotos, completion, onBack, showToast }) {
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Фотографии</p>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {allPhotos.map((p, i) => (
-              <img key={i} src={p.dataUrl} alt="" className="w-20 h-20 rounded-xl object-cover flex-shrink-0 shadow-sm" />
+              <button
+                key={i}
+                onClick={() => setCompleteLightbox({ photos: allPhotos.map(x => x.dataUrl), index: i })}
+                className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 shadow-sm cursor-zoom-in"
+              >
+                <img src={p.dataUrl} alt="" className="w-full h-full object-cover" />
+              </button>
             ))}
           </div>
+          {completeLightbox && (
+            <Lightbox photos={completeLightbox.photos} initialIndex={completeLightbox.index} onClose={() => setCompleteLightbox(null)} />
+          )}
         </div>
       )}
 
@@ -637,7 +734,7 @@ function CompletePhase({ order, allPhotos, completion, onBack, showToast }) {
                     <td className="px-4 py-2.5 text-right">
                       {values[m.id] ? (
                         <span className="font-mono font-bold text-slate-900 text-sm">
-                          {values[m.id]} <span className="text-slate-400 font-normal text-xs">{m.unit || 'см'}</span>
+                          {values[m.id]} <span className="text-slate-400 font-normal text-xs">{m.unit || 'мм'}</span>
                         </span>
                       ) : <span className="text-slate-300 text-sm">—</span>}
                     </td>
@@ -684,11 +781,11 @@ function makeFallback(productType) {
       { type: 'arrow', label: 'Высота', x1: 0.05, y1: 0.05, x2: 0.05, y2: 0.90, color: 'white' },
     ],
     measurements: [
-      { id: 1, label: 'Ширина стены (по плинтусу)', unit: 'см', required: true, hint: 'У самого пола', category: 'Стена' },
-      { id: 2, label: 'Ширина стены (на 120см)', unit: 'см', required: true, hint: 'На высоте пояса', category: 'Стена' },
-      { id: 3, label: 'Ширина стены (у потолка)', unit: 'см', required: true, category: 'Стена' },
-      { id: 4, label: 'Высота потолка (левый угол)', unit: 'см', required: true, category: 'Высота' },
-      { id: 5, label: 'Высота потолка (правый угол)', unit: 'см', required: true, category: 'Высота' },
+      { id: 1, label: 'Ширина стены (по плинтусу)', unit: 'мм', required: true, hint: 'У самого пола', category: 'Стена' },
+      { id: 2, label: 'Ширина стены (на 1200мм)', unit: 'мм', required: true, hint: 'На высоте пояса', category: 'Стена' },
+      { id: 3, label: 'Ширина стены (у потолка)', unit: 'мм', required: true, category: 'Стена' },
+      { id: 4, label: 'Высота потолка (левый угол)', unit: 'мм', required: true, category: 'Высота' },
+      { id: 5, label: 'Высота потолка (правый угол)', unit: 'мм', required: true, category: 'Высота' },
     ],
     warnings: [`ИИ-анализ недоступен — используется стандартный чек-лист для «${productType}»`],
   };
@@ -699,6 +796,7 @@ function makeFallback(productType) {
 function CompletedView({ order, data, onRedo, onBack }) {
   const { photos = [], measurements: completion = {}, room_summary } = data;
   const { measurements = [], values = {}, warnings = [] } = completion;
+  const [viewLightbox, setViewLightbox] = useState(null);
   const completedAt = data.completed_at ? new Date(data.completed_at).toLocaleDateString('ru-RU', {
     day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
   }) : null;
@@ -734,9 +832,18 @@ function CompletedView({ order, data, onRedo, onBack }) {
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Фотографии ({photos.length})</p>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {photos.map((p, i) => (
-              <img key={i} src={p.dataUrl} alt="" className="w-20 h-20 rounded-xl object-cover flex-shrink-0 shadow-sm" />
+              <button
+                key={i}
+                onClick={() => setViewLightbox({ photos: photos.map(x => x.dataUrl), index: i })}
+                className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 shadow-sm cursor-zoom-in"
+              >
+                <img src={p.dataUrl} alt="" className="w-full h-full object-cover" />
+              </button>
             ))}
           </div>
+          {viewLightbox && (
+            <Lightbox photos={viewLightbox.photos} initialIndex={viewLightbox.index} onClose={() => setViewLightbox(null)} />
+          )}
         </div>
       )}
 
@@ -758,7 +865,7 @@ function CompletedView({ order, data, onRedo, onBack }) {
                     <td className="px-4 py-2.5 text-right">
                       {values[m.id] ? (
                         <span className="font-mono font-bold text-slate-900 text-sm">
-                          {values[m.id]} <span className="text-slate-400 font-normal text-xs">{m.unit || 'см'}</span>
+                          {values[m.id]} <span className="text-slate-400 font-normal text-xs">{m.unit || 'мм'}</span>
                         </span>
                       ) : <span className="text-slate-300 text-sm">—</span>}
                     </td>

@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-primary: #0062d1;
+  --color-accent:  #0a7df5;
+}
+
 @layer base {
   html {
     font-family: 'Inter', system-ui, sans-serif;
@@ -42,6 +47,12 @@
 
   .input {
     @apply w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white
+           focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent
+           placeholder:text-slate-400 transition-all duration-150;
+  }
+
+  .input-sm {
+    @apply px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg bg-white
            focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent
            placeholder:text-slate-400 transition-all duration-150;
   }

@@ -32,7 +32,7 @@ export default function NewOrderModal({ onClose }) {
 
     setSaving(true);
     try {
-      createOrder({ ...form, total_price: parseFloat(form.total_price) || 0 });
+      await createOrder({ ...form, total_price: parseFloat(form.total_price) || 0 });
       showToast('Заказ успешно создан');
       onClose();
     } catch (err) {

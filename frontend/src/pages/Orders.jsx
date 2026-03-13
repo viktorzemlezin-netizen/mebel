@@ -4,10 +4,12 @@ import { useApp } from '../context/AppContext.jsx';
 import OrderRow from '../components/OrderRow.jsx';
 import OrderCard from '../components/OrderCard.jsx';
 import NewOrderModal from '../components/NewOrderModal.jsx';
-import { STATUSES } from '../utils/constants.js';
+import { STATUSES, WORKFLOW_STAGES } from '../utils/constants.js';
+
+const STAGE_FILTERS = ['all', 'Новый', 'Замер', 'Проектирование', 'Согласование', 'Производство', 'Готово', 'Монтаж', 'Завершён'];
 
 export default function Orders() {
-  const { orders, loading, filterStatus, setFilterStatus, showToast } = useApp();
+  const { orders, allOrders, loading, filterStatus, setFilterStatus, filterStage, setFilterStage, showToast } = useApp();
   const [showModal, setShowModal] = useState(false);
   const [view, setView] = useState('list');
 
@@ -35,9 +37,9 @@ export default function Orders() {
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex gap-1.5 flex-wrap">
+      {/* Status filters */}
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap gap-1.5">
           {filters.map(f => (
             <button
               key={f.key}
@@ -50,26 +52,48 @@ export default function Orders() {
             >
               {f.label}
               {f.count != null && f.count > 0 && (
-                <span className={`text-xs rounded-full px-1.5 py-0.5 ${
-                  filterStatus === f.key ? 'bg-white/20' : 'bg-slate-100'
-                }`}>{f.count}</span>
+                <span className={`text-xs rounded-full px-1.5 py-0.5 ${filterStatus === f.key ? 'bg-white/20' : 'bg-slate-100'}`}>{f.count}</span>
               )}
             </button>
           ))}
         </div>
 
-        <div className="flex gap-1 bg-slate-100 p-0.5 rounded-lg w-fit">
-          {[['list', '☰'], ['grid', '⊞']].map(([v, lbl]) => (
-            <button
-              key={v}
-              onClick={() => setView(v)}
-              className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
-                view === v ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
-              }`}
-            >
-              {lbl}
-            </button>
-          ))}
+        {/* Stage filters */}
+        <div className="flex flex-wrap gap-1.5 items-center">
+          <span className="text-xs text-slate-400 mr-1">Этап:</span>
+          {STAGE_FILTERS.map(s => {
+            const cnt = s === 'all' ? null : (allOrders || orders).filter(o => o.stage === s).length;
+            return (
+              <button
+                key={s}
+                onClick={() => setFilterStage(s)}
+                className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                  filterStage === s
+                    ? 'bg-slate-700 text-white'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                {s === 'all' ? 'Все этапы' : s}
+                {cnt != null && cnt > 0 && <span className="ml-1 opacity-70">{cnt}</span>}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex justify-end">
+          <div className="flex gap-1 bg-slate-100 p-0.5 rounded-lg w-fit">
+            {[['list', '☰'], ['grid', '⊞']].map(([v, lbl]) => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+                  view === v ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
+                }`}
+              >
+                {lbl}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

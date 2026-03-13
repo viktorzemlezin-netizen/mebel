@@ -1,28 +1,34 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Package, BarChart2, Calculator, Sofa, Ruler, Users, FileText, Calendar, LogOut } from 'lucide-react';
+import { LayoutDashboard, Package, BarChart2, Calculator, Sofa, Ruler, Users, FileText, Calendar, LogOut, Database, TrendingUp, GitBranch, ShoppingCart, DollarSign, Settings, CheckSquare, Palette } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
 
 const ALL_NAV = [
-  { to: '/',            icon: LayoutDashboard, label: 'Дашборд',      roles: ['Руководитель', 'Менеджер'] },
-  { to: '/orders',      icon: Package,         label: 'Заказы',       roles: ['Руководитель', 'Менеджер', 'Дизайнер', 'Монтажник'] },
-  { to: '/constructor', icon: Calculator,      label: 'Конструктор',  roles: ['Руководитель', 'Менеджер'] },
-  { to: '/analytics',   icon: BarChart2,       label: 'Аналитика',    roles: ['Руководитель'] },
-  { to: '/measurer',    icon: Ruler,           label: 'Мои замеры',   roles: ['Руководитель', 'Замерщик'] },
-  { to: '/clients',     icon: Users,           label: 'Клиенты',      roles: ['Руководитель', 'Менеджер'], disabled: true },
-  { to: '/documents',   icon: FileText,        label: 'Документы',    roles: ['Руководитель', 'Дизайнер'], disabled: true },
-  { to: '/schedule',    icon: Calendar,        label: 'Мой график',   roles: ['Руководитель', 'Монтажник'], disabled: true },
+  { to: '/',               icon: LayoutDashboard, label: 'Дашборд',       roles: ['Руководитель', 'Менеджер'] },
+  { to: '/leads',          icon: TrendingUp,      label: 'Лиды',          roles: ['Руководитель', 'Менеджер'] },
+  { to: '/orders',         icon: Package,         label: 'Заказы',        roles: ['Руководитель', 'Менеджер', 'Дизайнер', 'Монтажник', 'Снабженец', 'Технолог', 'Сборщик'] },
+  { to: '/clients',        icon: Users,           label: 'Клиенты',       roles: ['Руководитель', 'Менеджер'] },
+  { to: '/constructor',    icon: Calculator,      label: 'Конструктор',   roles: ['Руководитель', 'Менеджер', 'Дизайнер'] },
+  { to: '/analytics',      icon: BarChart2,       label: 'Аналитика',     roles: ['Руководитель'] },
+  { to: '/processes',      icon: GitBranch,       label: 'Процессы',      roles: ['Руководитель'] },
+  { to: '/procurement',    icon: ShoppingCart,    label: 'Закупки',       roles: ['Руководитель', 'Снабженец'] },
+  { to: '/finance',        icon: DollarSign,      label: 'Финансы',       roles: ['Руководитель', 'Бухгалтер'] },
+  { to: '/pricelists',     icon: Database,        label: 'Каталог',       roles: ['Руководитель'] },
+  { to: '/measurer',       icon: Ruler,           label: 'Мои замеры',    roles: ['Руководитель', 'Замерщик'] },
+  { to: '/settings/rules',     icon: Settings, label: 'Правила',  roles: ['Руководитель'] },
+  { to: '/settings/branding',  icon: Palette,  label: 'Брендинг', roles: ['Руководитель'] },
+  { to: '/my-tasks',       icon: CheckSquare,     label: 'Мои задачи',    roles: ['Менеджер', 'Дизайнер', 'Замерщик', 'Технолог', 'Сборщик', 'Монтажник', 'Снабженец', 'Бухгалтер'] },
 ];
 
 export default function Sidebar({ open, onToggle }) {
-  const { currentRole, setRole } = useApp();
+  const { currentRole, logout, branding } = useApp();
   const navigate = useNavigate();
 
   const roleName = currentRole?.role || null;
   const nav = ALL_NAV.filter(item => !roleName || item.roles.includes(roleName));
 
   const handleLogout = () => {
-    setRole(null);
+    logout();
     navigate('/login');
   };
 
@@ -39,12 +45,25 @@ export default function Sidebar({ open, onToggle }) {
       >
         {/* Logo */}
         <div className="flex items-center gap-3 px-4 py-5 border-b border-slate-100 min-w-[4rem]">
-          <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center flex-shrink-0">
-            <Sofa className="w-4 h-4 text-white" />
-          </div>
+          {branding?.logo_url ? (
+            <img
+              src={branding.logo_url}
+              alt="logo"
+              className="w-8 h-8 object-contain rounded-lg flex-shrink-0"
+            />
+          ) : (
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: branding?.primary_color || '#0062d1' }}
+            >
+              <Sofa className="w-4 h-4 text-white" />
+            </div>
+          )}
           {open && (
             <div className="overflow-hidden">
-              <div className="font-bold text-slate-900 text-base leading-tight">FurnFlow</div>
+              <div className="font-bold text-slate-900 text-base leading-tight">
+                {branding?.name || 'FurnFlow'}
+              </div>
               <div className="text-xs text-slate-400">Мебельные заказы</div>
             </div>
           )}
@@ -90,14 +109,14 @@ export default function Sidebar({ open, onToggle }) {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-xs font-semibold text-slate-700 truncate">{currentRole.role}</div>
-                <div className="text-xs text-slate-400">FurnFlow v1.0</div>
+                <div className="text-xs text-slate-400">{branding?.name || 'FurnFlow'} v1.0</div>
               </div>
               <button onClick={handleLogout} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600" title="Выйти">
                 <LogOut className="w-4 h-4" />
               </button>
             </>
           ) : open ? (
-            <p className="text-xs text-slate-400 px-2">FurnFlow v1.0</p>
+            <p className="text-xs text-slate-400 px-2">{branding?.name || 'FurnFlow'} v1.0</p>
           ) : (
             currentRole && (
               <button onClick={handleLogout} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600" title="Выйти">

@@ -1,183 +1,43 @@
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Phone, Mail, Calendar, Bell, AlertCircle, Sofa, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { Phone, Mail, Calendar, Bell, AlertCircle, Sofa, ChevronDown, ChevronUp, Check } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
-import ProgressBar from '../components/ProgressBar.jsx';
-import StatusBadge from '../components/StatusBadge.jsx';
-import { STAGES, STAGE_ICONS, PHOTO_CATEGORIES, formatCurrency, formatDate, formatDateTime } from '../utils/constants.js';
+import ChatBot from '../components/ChatBot.jsx';
+import { WORKFLOW_STAGES, STAGE_ICONS, STAGE_COLORS, formatCurrency, formatDate, formatDateTime } from '../utils/constants.js';
 
-// --- Photo gallery by stage ---
-function PhotoGallery({ photos }) {
-  const [activeTab, setActiveTab] = useState(null);
-  const [lightbox, setLightbox] = useState(null);
+const LIFECYCLE_VISIBLE = ['Новый', 'Замер', 'Проектирование', 'Производство', 'Монтаж', 'Завершён'];
 
-  if (!photos || photos.length === 0) return null;
-
-  const grouped = PHOTO_CATEGORIES.reduce((acc, cat) => {
-    const items = photos.filter(p => p.category === cat);
-    if (items.length) acc[cat] = items;
-    return acc;
-  }, {});
-
-  const tabs = Object.keys(grouped);
-  if (!tabs.length) return null;
-
-  const currentTab = activeTab || tabs[0];
-  const currentPhotos = grouped[currentTab] || [];
-
-  return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-      <div className="px-5 py-4 border-b border-slate-100 bg-slate-50">
-        <h2 className="font-semibold text-slate-900 flex items-center gap-2 text-sm">
-          📸 Фотогалерея
-          <span className="text-xs text-slate-400 font-normal ml-1">{photos.length} фото</span>
-        </h2>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-1 px-4 pt-3 overflow-x-auto">
-        {tabs.map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors flex-shrink-0 ${
-              currentTab === tab
-                ? 'bg-brand-600 text-white'
-                : 'text-slate-500 hover:bg-slate-100'
-            }`}
-          >
-            {tab}
-            <span className={`ml-1.5 ${currentTab === tab ? 'text-brand-200' : 'text-slate-400'}`}>
-              {grouped[tab].length}
-            </span>
-          </button>
-        ))}
-      </div>
-
-      {/* Grid */}
-      <div className="p-4 grid grid-cols-2 sm:grid-cols-3 gap-2">
-        {currentPhotos.map(photo => (
-          <div
-            key={photo.id}
-            className="relative rounded-xl overflow-hidden aspect-square bg-slate-100 cursor-pointer group"
-            onClick={() => setLightbox(photo)}
-          >
-            {photo.type === 'pdf' ? (
-              <div className="w-full h-full flex flex-col items-center justify-center gap-1">
-                <FileText className="w-8 h-8 text-red-400" />
-                <span className="text-xs text-slate-500 px-2 text-center leading-tight">{photo.name}</span>
-              </div>
-            ) : (
-              <>
-                <img
-                  src={photo.data}
-                  alt={photo.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-              </>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Lightbox */}
-      {lightbox && lightbox.type === 'image' && (
-        <div
-          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
-          onClick={() => setLightbox(null)}
-        >
-          <img
-            src={lightbox.data}
-            alt={lightbox.name}
-            className="max-w-full max-h-full rounded-xl object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
-          <button
-            className="absolute top-4 right-4 text-white bg-white/20 rounded-full p-2 hover:bg-white/30"
-            onClick={() => setLightbox(null)}
-          >
-            ✕
-          </button>
-          <p className="absolute bottom-4 left-0 right-0 text-center text-white/60 text-sm">{lightbox.name}</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// --- Progress timeline ---
 function Timeline({ order }) {
-  const currentIdx = STAGES.indexOf(order.stage);
+  const currentIdx = LIFECYCLE_VISIBLE.indexOf(
+    LIFECYCLE_VISIBLE.find(s => order.stage === s || order.stage.includes(s.split(' ')[0])) || 'Новый'
+  );
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
-      <h2 className="font-semibold text-slate-900 mb-5 flex items-center gap-2 text-sm">
-        🗓 Этапы выполнения
-      </h2>
+      <h2 className="font-semibold text-slate-900 mb-5 text-sm">🗓 Этапы выполнения</h2>
       <div className="relative">
-        {/* Vertical line */}
         <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-slate-100" />
-        <div
-          className="absolute left-4 top-4 w-0.5 bg-brand-400 transition-all duration-700"
-          style={{ height: `${(currentIdx / (STAGES.length - 1)) * 100}%` }}
-        />
-
+        <div className="absolute left-4 top-4 w-0.5 bg-brand-400 transition-all duration-700"
+          style={{ height: `${Math.max(0, (currentIdx / (LIFECYCLE_VISIBLE.length - 1)) * 100)}%` }} />
         <div className="space-y-4">
-          {STAGES.map((stage, i) => {
-            const isDone    = i < currentIdx;
-            const isActive  = i === currentIdx;
-            const isFuture  = i > currentIdx;
-            const photos    = (order.photos || []).filter(p => {
-              // Match stage name to photo category
-              const map = { 'Замер': 'Замер', 'Проект': 'Дизайн-проект', 'Производство': 'В производстве', 'Монтаж': 'Готовое изделие' };
-              return p.category === (map[stage] || stage);
-            });
-
+          {LIFECYCLE_VISIBLE.map((stage, i) => {
+            const isDone   = i < currentIdx;
+            const isActive = i === currentIdx;
             return (
               <div key={stage} className="flex gap-4 relative">
-                {/* Circle */}
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 z-10 text-base transition-all
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 z-10 text-sm transition-all
                   ${isDone   ? 'bg-brand-600 text-white shadow-sm shadow-brand-200'
                   : isActive ? 'bg-brand-100 text-brand-700 ring-2 ring-brand-400 ring-offset-2'
-                  :            'bg-slate-100 text-slate-400'}`}
-                >
+                  :            'bg-slate-100 text-slate-400'}`}>
                   {isDone ? '✓' : STAGE_ICONS[stage] || '○'}
                 </div>
-
                 <div className="flex-1 pb-1">
                   <div className="flex items-center gap-2">
                     <span className={`text-sm font-semibold ${isDone ? 'text-brand-700' : isActive ? 'text-slate-900' : 'text-slate-400'}`}>
                       {stage}
                     </span>
-                    {isActive && (
-                      <span className="text-xs bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full font-medium animate-pulse">
-                        Сейчас
-                      </span>
-                    )}
-                    {isDone && (
-                      <span className="text-xs text-slate-400">Выполнено</span>
-                    )}
+                    {isActive && <span className="text-xs bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full font-medium animate-pulse">Сейчас</span>}
                   </div>
-
-                  {/* Photos for this stage */}
-                  {photos.length > 0 && (
-                    <div className="flex gap-1.5 mt-2 flex-wrap">
-                      {photos.slice(0, 3).map(ph => (
-                        <img
-                          key={ph.id}
-                          src={ph.data}
-                          alt={ph.name}
-                          className="w-12 h-12 rounded-lg object-cover border border-slate-200"
-                        />
-                      ))}
-                      {photos.length > 3 && (
-                        <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center text-xs text-slate-500 font-medium">
-                          +{photos.length - 3}
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
               </div>
             );
@@ -188,7 +48,81 @@ function Timeline({ order }) {
   );
 }
 
-// --- Main portal ---
+const APPROVAL_STAGES = ['Согласование', 'Производство', 'Готово', 'Монтаж', 'Завершён'];
+const PRESET_STYLES = {
+  'ЭКОНОМ':   { bg: 'from-emerald-50 to-teal-50', border: 'border-emerald-200', accent: 'text-emerald-700', btn: 'bg-emerald-600 hover:bg-emerald-700 text-white', badge: '💚 Выгодно' },
+  'СТАНДАРТ': { bg: 'from-blue-50 to-brand-50',   border: 'border-blue-200',   accent: 'text-blue-700',    btn: 'bg-blue-600 hover:bg-blue-700 text-white',       badge: '⭐ Популярно', featured: true },
+  'ПРЕМИУМ':  { bg: 'from-purple-50 to-violet-50', border: 'border-purple-200', accent: 'text-purple-700',  btn: 'bg-purple-600 hover:bg-purple-700 text-white',   badge: '👑 Топ' },
+};
+
+function PriceVariants({ order }) {
+  const [selected, setSelected] = useState(null);
+  const [sent, setSent] = useState(false);
+
+  const config = order.constructor_config
+    ? (typeof order.constructor_config === 'string' ? JSON.parse(order.constructor_config) : order.constructor_config)
+    : null;
+  const variants = config?.variants || [];
+
+  if (!APPROVAL_STAGES.includes(order.stage) && order.progress < 45) return null;
+  if (variants.length === 0) return null;
+
+  const handleChoose = (name) => {
+    setSelected(name);
+    setSent(true);
+  };
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+      <div className="px-5 py-4 border-b border-slate-100 bg-slate-50">
+        <h2 className="font-semibold text-slate-900 text-sm">💰 Выберите вариант комплектации</h2>
+        <p className="text-xs text-slate-400 mt-0.5">3 варианта — выберите подходящий</p>
+      </div>
+      {sent ? (
+        <div className="p-6 text-center">
+          <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <Check className="w-6 h-6 text-emerald-600" />
+          </div>
+          <p className="font-semibold text-slate-900">Выбор отправлен менеджеру!</p>
+          <p className="text-sm text-slate-500 mt-1">Вариант «{selected}» · Менеджер свяжется с вами</p>
+        </div>
+      ) : (
+        <div className="p-4 grid gap-3">
+          {variants.map((v) => {
+            const style = PRESET_STYLES[v.name] || PRESET_STYLES['СТАНДАРТ'];
+            return (
+              <div key={v.name} className={`relative rounded-2xl border-2 bg-gradient-to-br ${style.bg} ${style.border} p-4`}>
+                {style.featured && (
+                  <div className="absolute top-0 right-0 bg-brand-600 text-white text-xs font-semibold px-3 py-1 rounded-bl-xl rounded-tr-xl">Популярный</div>
+                )}
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`font-bold ${style.accent}`}>{v.name}</span>
+                      <span className="text-xs bg-white/60 rounded-full px-2 py-0.5 text-slate-600">{style.badge}</span>
+                    </div>
+                    <p className={`text-2xl font-bold ${style.accent}`}>{formatCurrency(v.price)}</p>
+                  </div>
+                </div>
+                {(v.corpus || v.facade || v.hardware) && (
+                  <div className="grid grid-cols-3 gap-1.5 mt-3 mb-3">
+                    {v.corpus  && <div className="bg-white/60 rounded-lg px-2 py-1.5"><p className="text-xs text-slate-400">Корпус</p><p className="text-xs font-medium text-slate-700">{v.corpus}</p></div>}
+                    {v.facade  && <div className="bg-white/60 rounded-lg px-2 py-1.5"><p className="text-xs text-slate-400">Фасады</p><p className="text-xs font-medium text-slate-700">{v.facade}</p></div>}
+                    {v.hardware && <div className="bg-white/60 rounded-lg px-2 py-1.5"><p className="text-xs text-slate-400">Фурнитура</p><p className="text-xs font-medium text-slate-700">{v.hardware}</p></div>}
+                  </div>
+                )}
+                <button onClick={() => handleChoose(v.name)} className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-colors ${style.btn}`}>
+                  Выбрать этот вариант →
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ClientPortal() {
   const { token } = useParams();
   const { getOrderByToken } = useApp();
@@ -205,13 +139,13 @@ export default function ClientPortal() {
     </div>
   );
 
-  const debt        = (order.total_price || 0) - (order.paid_amount || 0);
-  const paidPct     = order.total_price > 0 ? Math.round((order.paid_amount / order.total_price) * 100) : 0;
+  const debt    = (order.total_price || 0) - (order.paid_amount || 0);
+  const paidPct = order.total_price > 0 ? Math.round((order.paid_amount / order.total_price) * 100) : 0;
   const notifications = order.notifications || [];
+  const stageColor = STAGE_COLORS[order.stage] || 'bg-slate-100 text-slate-700';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-brand-50/30">
-      {/* Sticky header */}
       <header className="bg-white/90 backdrop-blur-md border-b border-slate-100 sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -221,21 +155,20 @@ export default function ClientPortal() {
             <span className="font-bold text-slate-900 text-sm">FurnFlow</span>
             <span className="text-slate-400 text-xs ml-2 hidden sm:inline">Портал клиента</span>
           </div>
-          <StatusBadge status={order.status} />
+          <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${stageColor}`}>
+            {STAGE_ICONS[order.stage] || ''} {order.stage}
+          </span>
         </div>
       </header>
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
-
         {/* Order identity */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
           <p className="text-xs font-mono text-slate-400 mb-1">{order.order_number}</p>
           <h1 className="text-xl font-bold text-slate-900 leading-tight">{order.client_name}</h1>
           <p className="text-slate-500 text-sm mt-1">{order.product_type}</p>
           {order.description && (
-            <p className="text-sm text-slate-600 bg-slate-50 rounded-xl p-3 mt-3 leading-relaxed">
-              {order.description}
-            </p>
+            <p className="text-sm text-slate-600 bg-slate-50 rounded-xl p-3 mt-3 leading-relaxed">{order.description}</p>
           )}
         </div>
 
@@ -246,28 +179,18 @@ export default function ClientPortal() {
             <span>{STAGE_ICONS[order.stage]}</span> {order.stage}
           </p>
           <div className="mt-3">
-            <div className="flex justify-between text-xs text-brand-200 mb-1">
-              <span>Прогресс</span><span>{order.progress}%</span>
-            </div>
+            <div className="flex justify-between text-xs text-brand-200 mb-1"><span>Прогресс</span><span>{order.progress}%</span></div>
             <div className="h-2 bg-brand-400/50 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-white rounded-full transition-all duration-700"
-                style={{ width: `${order.progress}%` }}
-              />
+              <div className="h-full bg-white rounded-full transition-all duration-700" style={{ width: `${order.progress}%` }} />
             </div>
           </div>
         </div>
 
-        {/* Progress bar */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
-          <ProgressBar progress={order.progress} stage={order.stage} />
-        </div>
-
-        {/* Timeline with photos */}
+        {/* Timeline */}
         <Timeline order={order} />
 
-        {/* Photo gallery */}
-        <PhotoGallery photos={order.photos} />
+        {/* Price variants (if in approval stage) */}
+        <PriceVariants order={order} />
 
         {/* Finance */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
@@ -289,10 +212,7 @@ export default function ClientPortal() {
             )}
           </div>
           <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-emerald-500 rounded-full transition-all duration-700"
-              style={{ width: `${paidPct}%` }}
-            />
+            <div className="h-full bg-emerald-500 rounded-full transition-all duration-700" style={{ width: `${paidPct}%` }} />
           </div>
           <div className="flex justify-between text-xs text-slate-400 mt-1.5">
             <span>Оплачено {paidPct}%</span>
@@ -300,20 +220,20 @@ export default function ClientPortal() {
           </div>
         </div>
 
-        {/* Delivery */}
+        {/* Delivery date */}
         {order.delivery_date && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 flex items-center gap-3">
             <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center flex-shrink-0">
               <Calendar className="w-5 h-5 text-amber-600" />
             </div>
             <div>
-              <p className="text-xs text-slate-400">Срок сдачи</p>
+              <p className="text-xs text-slate-400">Ожидаемая дата сдачи</p>
               <p className="font-semibold text-slate-900 text-sm">{formatDate(order.delivery_date)}</p>
             </div>
           </div>
         )}
 
-        {/* Notifications collapsible */}
+        {/* Notifications */}
         {notifications.length > 0 && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             <button
@@ -321,17 +241,11 @@ export default function ClientPortal() {
               className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors"
             >
               <span className="font-semibold text-slate-900 text-sm flex items-center gap-2">
-                <Bell className="w-4 h-4 text-slate-400" /> Обновления заказа
-                <span className="text-xs bg-brand-100 text-brand-700 rounded-full px-1.5 py-0.5 font-medium">
-                  {notifications.length}
-                </span>
+                <Bell className="w-4 h-4 text-slate-400" /> Обновления
+                <span className="text-xs bg-brand-100 text-brand-700 rounded-full px-1.5 py-0.5 font-medium">{notifications.length}</span>
               </span>
-              {notifsOpen
-                ? <ChevronUp className="w-4 h-4 text-slate-400" />
-                : <ChevronDown className="w-4 h-4 text-slate-400" />
-              }
+              {notifsOpen ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
             </button>
-
             {notifsOpen && (
               <div className="border-t border-slate-100 divide-y divide-slate-50">
                 {notifications.map(n => (
@@ -341,7 +255,7 @@ export default function ClientPortal() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-semibold text-slate-800">{n.title}</span>
+                        <span className="text-xs font-semibold text-slate-800">{n.title || n.message?.slice(0, 40)}</span>
                         <span className="text-xs text-slate-400">{formatDateTime(n.created_at)}</span>
                       </div>
                       <p className="text-xs text-slate-500 mt-0.5">{n.message}</p>
@@ -353,12 +267,12 @@ export default function ClientPortal() {
           </div>
         )}
 
-        {/* Footer contacts */}
+        {/* Footer */}
         <div className="text-center py-4 space-y-2">
           <p className="text-xs text-slate-400">Вопросы? Свяжитесь с менеджером</p>
           <div className="flex justify-center gap-5">
-            <a href="tel:+78001234567" className="flex items-center gap-1.5 text-xs text-brand-600 hover:underline font-medium">
-              <Phone className="w-3.5 h-3.5" /> +7 (800) 123-45-67
+            <a href="tel:+77172000000" className="flex items-center gap-1.5 text-xs text-brand-600 hover:underline font-medium">
+              <Phone className="w-3.5 h-3.5" /> +7 (7172) 00-00-00
             </a>
             <a href="mailto:info@furnflow.kz" className="flex items-center gap-1.5 text-xs text-brand-600 hover:underline font-medium">
               <Mail className="w-3.5 h-3.5" /> info@furnflow.kz
@@ -367,6 +281,16 @@ export default function ClientPortal() {
           <p className="text-xs text-slate-300 mt-3">Powered by FurnFlow</p>
         </div>
       </div>
+      <ChatBot systemType="client" orderDetails={{
+        order_number: order.order_number,
+        client_name: order.client_name,
+        product_type: order.product_type,
+        stage: order.stage,
+        status: order.status,
+        delivery_date: order.delivery_date,
+        total_price: order.total_price,
+        description: order.description,
+      }} />
     </div>
   );
 }
